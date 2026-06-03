@@ -36,9 +36,9 @@ Requires Python 3.10+ and a working `claude` CLI.
 git clone <this repo> ship-and-tell
 cd ship-and-tell
 
-# 1. Install the package into a venv
+# 1. Install the package into a venv (add the [ui] extras if you want the Streamlit viewer)
 python3 -m venv .venv
-.venv/bin/pip install -e .
+.venv/bin/pip install -e '.[ui]'
 
 # 2. Register the MCP server with Claude Code
 claude mcp add ship-and-tell -- "$PWD/.venv/bin/ship-and-tell-mcp"
@@ -82,7 +82,17 @@ To browse what's been saved:
 
 > *"show me my unposted tweets from the ship-and-tell vault"*
 
-The vault lives at `~/.ship-and-tell/vault.jsonl` — append-only, one insight per line. Edit it by hand, grep it, version it, whatever you want.
+The vault lives at `~/.ship-and-tell/vault.jsonl` — one insight per line. Edit it by hand, grep it, version it, whatever you want.
+
+### Streamlit UI
+
+For a visual browser over the vault and recent sessions:
+
+```bash
+.venv/bin/ship-and-tell-ui
+```
+
+Opens at `http://localhost:8501`. Pick an agent (Claude Code today; Codex / OpenCode / Cursor / Gemini show as *coming soon*), filter recent sessions by project / minimum turn count, browse saved insights with tweet/thread/article tabs, and toggle the **Mark posted** / **Mark unposted** button per entry. Generation still happens inside Claude Code via the MCP server — the UI is for *managing* drafts, not creating them.
 
 ## MCP tools
 

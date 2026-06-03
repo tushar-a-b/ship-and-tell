@@ -7,8 +7,14 @@ dependencies = [
     "mcp[cli]>=1.2.0",
 ]
 
+[project.optional-dependencies]
+ui = [
+    "streamlit>=1.30",
+]
+
 [project.scripts]
 ship-and-tell-mcp = "ship_and_tell.server:main"
+ship-and-tell-ui = "ship_and_tell.ui_launcher:main"
 
 [build-system]
 requires = ["hatchling"]
