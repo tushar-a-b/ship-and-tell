@@ -98,10 +98,13 @@ Opens at `http://localhost:8501`. Pick an agent (Claude Code today; Codex / Open
 
 | Tool | Purpose |
 |---|---|
-| `list_recent_sessions(days=7)` | Survey recent Claude Code sessions: id, project, first user message, turn count. |
-| `read_session(session_id, format, max_turns)` | Read one session. `format="summary"` strips tool noise; `format="full"` returns raw JSONL. Long sessions auto-truncate head+tail. |
+| `list_recent_sessions(days=7, min_user_turns=0, project_filter=None)` | Survey recent Claude Code sessions: id, project, first user message, turn count. Filter to skip drive-bys or focus on one repo. |
+| `read_session(session_id, format="summary", max_turns=200)` | Read one session. `format="summary"` strips tool noise; `format="full"` returns raw JSONL. Long sessions auto-truncate head+tail. |
+| `read_git_activity(repo_path, since_days=7, since, until, max_commits=50, author)` | Commits + shortstat + top-touched files for a repo over a window. Pair with `read_session` to separate "discussed" from "shipped". |
 | `save_insight(title, lesson, tweet, thread, article, ...)` | Append one insight to the vault. |
-| `list_vault(limit, since_days)` | Read the vault back. |
+| `list_vault(limit=20, since_days=None, posted=None)` | Read the vault back. `posted=False` returns unposted only; `True` returns posted only. |
+| `update_insight(insight_id, ...)` | Edit any mutable field on an existing entry. |
+| `mark_posted(insight_id, posted=True)` | Toggle the posted flag. |
 
 ## Use it from other agents
 
@@ -123,7 +126,7 @@ Point each to `/<path-to-repo>/.venv/bin/ship-and-tell-mcp`. The tools work the 
 | OpenCode | ⏳ | Planned: `~/.local/share/opencode/storage/...` |
 | Cursor | ⏳ | Planned: SQLite `state.vscdb` under `workspaceStorage/` |
 | Gemini CLI | ⏳ | Planned (location TBD) |
-| Git | ⏳ | Planned: `git log` / `git diff` per repo touched |
+| Git | ✅ | `git log --shortstat` + top-touched files per repo, scoped by time window |
 
 ## Vault entry shape
 
@@ -148,9 +151,11 @@ Point each to `/<path-to-repo>/.venv/bin/ship-and-tell-mcp`. The tools work the 
 ## Roadmap
 
 - **v0.1** — Codex + OpenCode source adapters.
-- **v0.2** — Git activity adapter; `Stop` hook for Claude Code that flags tweet-worthy moments as a session ends (the "killer feature" from the spec).
+- **v0.2** — `Stop` hook for Claude Code that flags tweet-worthy moments as a session ends (the "killer feature" from the spec).
 - **v0.3** — Cursor SQLite adapter; richer scoring (tweet_score, recruiter_signal, uniqueness).
 - **v1** — Optional standalone CLI (`shipandtell weekly`) for cron / non-agent use.
+
+Shipped already: Claude Code source adapter, git activity adapter, Streamlit vault/sessions UI, atomic vault edits.
 
 ## Config
 
