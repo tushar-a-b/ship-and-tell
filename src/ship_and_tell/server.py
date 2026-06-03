@@ -26,8 +26,13 @@ def list_recent_sessions(
     """List Claude Code coding sessions from the last N days.
 
     Returns metadata per session: session_id, project (cwd), first user message,
-    user_turn_count, model, git_branch. Use this to survey what was worked on
-    and pick interesting sessions to read in full.
+    user_turn_count, model, git_branch, subagent_count. Use this to survey
+    what was worked on and pick interesting sessions to read in full.
+
+    subagent_count tells you how many Agent tool invocations spawned a
+    sub-transcript. Sessions with subagent_count >= 3 are usually the ones
+    with the richest investigative content -- call read_session with
+    include_subagents="summary" on those.
 
     min_user_turns: skip sessions with fewer human-typed turns than this.
     Useful default once the vault has many entries: 5 or 10 to skip drive-bys.
@@ -49,20 +54,73 @@ def read_session(
     session_id: str,
     format: str = "summary",
     max_turns: int = 200,
+    include_subagents: str = "none",
+    max_subagent_turns: int = 40,
 ) -> dict[str, Any]:
     """Read the transcript of one Claude Code session.
 
     format="summary" (default): human-typed user turns + assistant text replies.
     Tool calls, tool results, thinking blocks, and meta wrappers are stripped.
-    Best for understanding what happened.
     format="full": raw JSONL records. Use only if summary is missing detail.
 
-    max_turns caps the summary output (default 200). Long sessions are
-    truncated by keeping the head and tail; check `truncated` in the response.
-    session_id values come from list_recent_sessions.
+    include_subagents:
+      "none" (default) -- parent transcript only.
+      "summary" -- inserts a subagent_marker turn at each Agent invocation
+        point in the parent, then appends each subagent's own summary in
+        `subagent_sections`. The parent's redundant tool_result for each
+        Agent call was already excluded by the summary path, so each piece
+        of subagent content appears EXACTLY ONCE in its dedicated section.
+        Use on sessions where subagent_count >= 3 -- the investigative
+        thinking lives there.
+      "full" -- raw JSONL per subagent. Heavy; rarely needed.
+
+    max_turns caps the parent summary (default 200). Long sessions are
+    truncated head+tail (check `truncated`). max_subagent_turns caps each
+    individual subagent summary (default 40).
+
+    session_id values come from list_recent_sessions. subagent_marker turns
+    in the output use role="subagent_marker"; the synthetic first "user" turn
+    of each subagent uses role="agent_task" so you don't mistake the
+    auto-generated task brief for human input.
     """
     return claude_code.read_session(
         session_id=session_id,
+        format=format,
+        max_turns=max_turns,
+        include_subagents=include_subagents,
+        max_subagent_turns=max_subagent_turns,
+    )
+
+
+@mcp.tool()
+def list_subagents(parent_session_id: str) -> list[dict[str, Any]]:
+    """List subagents (Agent tool invocations) spawned from a parent session.
+
+    Each entry: parent_session_id, agent_id, agent_type (Explore/Plan/
+    general-purpose/etc), description (the parent's task brief), started_at,
+    message_count, model. Use as a cheaper alternative to read_session with
+    include_subagents="summary" when you only need the index.
+    """
+    return [s.to_dict() for s in claude_code.list_subagents(parent_session_id)]
+
+
+@mcp.tool()
+def read_subagent(
+    parent_session_id: str,
+    agent_id: str,
+    format: str = "summary",
+    max_turns: int = 100,
+) -> dict[str, Any]:
+    """Read one subagent's transcript.
+
+    Returns parent_session_id, agent_id, agent_type, description, and the
+    same turns shape as read_session. The first turn has role="agent_task"
+    (the auto-generated task brief from the parent), not role="user", to
+    keep the digest LLM from treating it as human input.
+    """
+    return claude_code.read_subagent(
+        parent_session_id=parent_session_id,
+        agent_id=agent_id,
         format=format,
         max_turns=max_turns,
     )

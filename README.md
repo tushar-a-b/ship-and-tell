@@ -98,9 +98,11 @@ Opens at `http://localhost:8501`. Pick an agent (Claude Code today; Codex / Open
 
 | Tool | Purpose |
 |---|---|
-| `list_recent_sessions(days=7, min_user_turns=0, project_filter=None)` | Survey recent Claude Code sessions: id, project, first user message, turn count. Filter to skip drive-bys or focus on one repo. |
-| `read_session(session_id, format="summary", max_turns=200)` | Read one session. `format="summary"` strips tool noise; `format="full"` returns raw JSONL. Long sessions auto-truncate head+tail. |
-| `read_git_activity(repo_path, since_days=7, since, until, max_commits=50, author)` | Commits + shortstat + top-touched files for a repo over a window. Pair with `read_session` to separate "discussed" from "shipped". |
+| `list_recent_sessions(days=7, min_user_turns=0, project_filter=None)` | Survey recent Claude Code sessions: id, project, first user message, turn count, **subagent_count**. Filter to skip drive-bys or focus on one repo. |
+| `read_session(session_id, format="summary", max_turns=200, include_subagents="none", max_subagent_turns=40)` | Read one session. `include_subagents="summary"` appends each subagent's transcript in its own section and drops the parent's redundant tool_result, so each piece of investigative content appears exactly once. |
+| `list_subagents(parent_session_id)` | Cheap index of subagents spawned from a session: agent_type, description, message_count. |
+| `read_subagent(parent_session_id, agent_id, format="summary", max_turns=100)` | Read one subagent's transcript. First turn is `role="agent_task"` (the parent's brief), not `user`. |
+| `read_git_activity(repo_path, since_days=7, since, until, max_commits=50, author)` | Commits + shortstat + top-touched files for a repo over a window. |
 | `save_insight(title, lesson, tweet, thread, article, ...)` | Append one insight to the vault. |
 | `list_vault(limit=20, since_days=None, posted=None)` | Read the vault back. `posted=False` returns unposted only; `True` returns posted only. |
 | `update_insight(insight_id, ...)` | Edit any mutable field on an existing entry. |

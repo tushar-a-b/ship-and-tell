@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ship_and_tell import sources, vault
+from ship_and_tell import claude_code, sources, vault
 
 st.set_page_config(page_title="Ship & Tell", page_icon="🚢", layout="wide")
 
@@ -97,6 +97,29 @@ def _sidebar() -> dict:
     }
 
 
+def _render_turns(turns: list[dict]) -> None:
+    """Render a list of turn dicts produced by claude_code.read_session.
+
+    Handles all roles: user, assistant, agent_task (synthetic subagent brief),
+    subagent_marker (boundary indicator inside the parent), and system
+    (elision notice).
+    """
+    for t in turns:
+        role = t.get("role")
+        text = t.get("text", "")
+        if role == "user":
+            st.markdown(f"**🧑 user**\n\n{text}")
+        elif role == "assistant":
+            st.markdown(f"**🤖 assistant**\n\n{text}")
+        elif role == "agent_task":
+            st.markdown(f"**📋 agent_task** *(synthetic — task brief from parent)*\n\n{text}")
+        elif role == "subagent_marker":
+            st.info(text, icon="🧠")
+        else:
+            st.caption(text)
+        st.divider()
+
+
 def _sessions_tab(filters: dict) -> None:
     agent_key = filters["agent_key"]
     cfg = sources.AVAILABLE[agent_key]
@@ -139,16 +162,30 @@ def _sessions_tab(filters: dict) -> None:
 
     for s in sessions:
         d = s.to_dict()
-        title = f"**{d['project']}** — {d['user_turn_count']} turns — {d['last_active_at'][:10]}"
+        sub_n = d.get("subagent_count") or 0
+        badge = f" · 🧠 {sub_n} subagents" if sub_n else ""
+        title = (
+            f"**{d['project']}** — {d['user_turn_count']} turns "
+            f"— {d['last_active_at'][:10]}{badge}"
+        )
         with st.expander(title):
-            cols = st.columns(4)
+            cols = st.columns(5)
             cols[0].metric("User turns", d["user_turn_count"])
             cols[1].metric("Total records", d["message_count"])
-            cols[2].write(f"**Branch**\n\n`{d.get('git_branch') or '—'}`")
-            cols[3].write(f"**Model**\n\n`{d.get('model') or '—'}`")
+            cols[2].metric("Subagents", sub_n)
+            cols[3].write(f"**Branch**\n\n`{d.get('git_branch') or '—'}`")
+            cols[4].write(f"**Model**\n\n`{d.get('model') or '—'}`")
             st.write(f"**Session ID:** `{d['session_id']}`")
             if d["first_user_message"]:
                 st.markdown(f"**First message:** {d['first_user_message']}")
+
+            include_subs = False
+            if sub_n:
+                include_subs = st.checkbox(
+                    f"Include {sub_n} subagent transcript(s) in summary "
+                    f"(parent tool_result dropped to avoid double-counting)",
+                    key=f"inc_{d['session_id']}",
+                )
 
             if st.button("Show summary", key=f"show_{d['session_id']}"):
                 with st.spinner("Reading…"):
@@ -156,22 +193,66 @@ def _sessions_tab(filters: dict) -> None:
                         d["session_id"],
                         format="summary",
                         max_turns=filters["max_turns"],
+                        include_subagents=("summary" if include_subs else "none"),
+                        max_subagent_turns=40,
+                    )
+                tail = " · tool calls, tool results, thinking, and meta wrappers stripped"
+                if include_subs:
+                    tail += (
+                        f" · subagent markers inserted; "
+                        f"{out.get('subagent_count', 0)} subagent section(s) appended; "
+                        f"{out.get('unmatched_subagent_count', 0)} orphans"
                     )
                 st.caption(
                     f"{out['returned_turn_count']} of {out['turn_count']} turns shown"
                     + (" — middle elided" if out.get("truncated") else "")
-                    + " · tool calls, tool results, thinking, and meta wrappers stripped"
+                    + tail
                 )
-                for t in out["turns"]:
-                    role = t["role"]
-                    text = t["text"]
-                    if role == "user":
-                        st.markdown(f"**🧑 user**\n\n{text}")
-                    elif role == "assistant":
-                        st.markdown(f"**🤖 assistant**\n\n{text}")
-                    else:
-                        st.caption(text)
-                    st.divider()
+                _render_turns(out["turns"])
+
+                if include_subs and out.get("subagent_sections"):
+                    for sec in out["subagent_sections"]:
+                        flag = "matched" if sec.get("matched_to_parent") else "orphan"
+                        st.markdown(
+                            f"### 🧠 Subagent — {sec.get('agent_type') or 'unknown'} "
+                            f"({flag})\n"
+                            f"*{sec.get('description') or '(no description)'}*"
+                        )
+                        st.caption(
+                            f"{sec['returned_turn_count']} of {sec['turn_count']} subagent turns"
+                            + (" — middle elided" if sec.get("truncated") else "")
+                        )
+                        _render_turns(sec["turns"])
+
+            if sub_n and st.button(
+                f"List {sub_n} subagent(s)",
+                key=f"list_sub_{d['session_id']}",
+            ):
+                with st.spinner("Loading subagent index…"):
+                    subs_meta = claude_code.list_subagents(d["session_id"])
+                for sub in subs_meta:
+                    sm = sub.to_dict()
+                    desc = sm["description"] or "(no description)"
+                    atype = sm["agent_type"] or "unknown"
+                    with st.container():
+                        st.markdown(
+                            f"**🧠 {atype}** — *{desc}*  \n"
+                            f"`{sm['agent_id']}` · {sm['message_count']} records · model `{sm.get('model') or '—'}`"
+                        )
+                        if st.button(
+                            "Show subagent summary",
+                            key=f"show_sub_{d['session_id']}_{sm['agent_id']}",
+                        ):
+                            with st.spinner("Reading subagent…"):
+                                sout = claude_code.read_subagent(
+                                    d["session_id"], sm["agent_id"], max_turns=80
+                                )
+                            st.caption(
+                                f"{sout['returned_turn_count']} of {sout['turn_count']} turns"
+                                + (" — middle elided" if sout.get("truncated") else "")
+                            )
+                            _render_turns(sout["turns"])
+                        st.divider()
 
 
 def _vault_tab() -> None:
