@@ -12,7 +12,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from . import claude_code, vault
+from . import claude_code, git_activity, vault
 
 mcp = FastMCP("ship-and-tell")
 
@@ -65,6 +65,36 @@ def read_session(
         session_id=session_id,
         format=format,
         max_turns=max_turns,
+    )
+
+
+@mcp.tool()
+def read_git_activity(
+    repo_path: str,
+    since_days: int | None = 7,
+    since: str | None = None,
+    until: str | None = None,
+    max_commits: int = 50,
+    author: str | None = None,
+) -> dict[str, Any]:
+    """Read git commits + shortstat for a repo over a time window.
+
+    Use alongside read_session: the transcript tells you what was *discussed*;
+    this tells you what was *actually committed*. The intersection is usually
+    where the tweet-worthy lessons live -- a thing you argued about and shipped.
+
+    `repo_path` is typically the `project` field from list_recent_sessions.
+    Either pass `since_days` (default 7) or `since`/`until` (git relative or
+    ISO forms, e.g. "2026-06-01"). Errors come back in the `error` field
+    instead of as exceptions, so you can call this without try/except.
+    """
+    return git_activity.read_activity(
+        repo_path=repo_path,
+        since_days=since_days,
+        since=since,
+        until=until,
+        max_commits=max_commits,
+        author=author,
     )
 
 

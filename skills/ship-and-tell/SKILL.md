@@ -1,27 +1,32 @@
 ---
 name: ship-and-tell
-description: Mine the user's recent Claude Code sessions for shareable insights -- tweet drafts, thread skeletons, article ideas -- and produce a weekly digest. Use when the user asks for "tweet ideas", "weekly digest", "what did I learn this week", "ship and tell", "/weekly", "/ship-it", or similar. Requires the `ship-and-tell` MCP server to be installed (tools: list_recent_sessions, read_session, save_insight, list_vault).
+description: Mine the user's recent Claude Code sessions and git activity for shareable insights -- tweet drafts, thread skeletons, article ideas -- and produce a weekly digest. Use when the user asks for "tweet ideas", "weekly digest", "what did I learn this week", "ship and tell", "/weekly", "/ship-it", or similar. Requires the `ship-and-tell` MCP server (tools: list_recent_sessions, read_session, read_git_activity, save_insight, list_vault, update_insight, mark_posted).
 ---
 
 # Ship & Tell
 
-Turn recent coding sessions into shareable insights. The MCP tools provide structured access to transcripts and a local vault; you (the host LLM) do the writing.
+Turn recent coding sessions into shareable insights. The MCP tools provide structured access to transcripts, git activity, and a local vault; you (the host LLM) do the writing.
 
 ## Required MCP tools
 
-- `list_recent_sessions(days)` -- survey recent sessions.
-- `read_session(session_id, format)` -- read one session (use `format="summary"`).
+- `list_recent_sessions(days, min_user_turns, project_filter)` -- survey recent sessions. Pass `min_user_turns=5` once the vault is populated to skip drive-bys.
+- `read_session(session_id, format, max_turns)` -- read one session (use `format="summary"`).
+- `read_git_activity(repo_path, since_days)` -- list commits + shortstat for a repo. Pair with read_session to separate "discussed" from "shipped".
 - `save_insight(...)` -- persist a draft to the vault.
-- `list_vault(limit, since_days)` -- pull saved entries.
+- `list_vault(limit, since_days, posted)` -- pull saved entries; pass `posted=False` for unposted.
+- `update_insight(insight_id, ...)` -- edit a draft.
+- `mark_posted(insight_id, posted)` -- flag a draft as posted/unposted.
 
 If these tools are not available, tell the user the `ship-and-tell` MCP server is not installed and stop. Do not fall back to guessing.
 
 ## Workflow
 
 1. Call `list_vault(since_days=14)` first so you can dedupe.
-2. Call `list_recent_sessions(days=7)` (or whatever range the user asks for).
+2. Call `list_recent_sessions(days=7, min_user_turns=5)` (or whatever range the user asks for).
 3. Pick the 5-10 most interesting sessions. Prefer ones with: a real bug fix, an architecture/library decision, a debugging arc that revealed a root cause, a performance change, or a surprising failure mode (AI agent, deploy platform, library). Skip trivial sessions (one-off questions, quick edits).
-4. For each pick, call `read_session(session_id, format="summary")`. Read for the *generalizable* lesson, not just "I did X".
+4. For each pick:
+   - Call `read_session(session_id, format="summary")`. Read for the *generalizable* lesson, not just "I did X".
+   - Call `read_git_activity(repo_path=<session's project>, since_days=...)` to see what actually shipped during the session's window. Prefer lessons that map to real commits -- if you can name the sha, the lesson is real.
 5. For every distinct lesson worth keeping, call `save_insight` with:
    - `title`: 5-10 word handle.
    - `lesson`: 1-2 sentences, generalized. The reusable learning, not the narrative.
