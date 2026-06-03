@@ -104,10 +104,19 @@ def _is_meta(text: str) -> bool:
     return any(s.startswith(p) for p in _META_PREFIXES)
 
 
-def list_recent(days: int = 7) -> list[SessionInfo]:
-    """List Claude Code sessions whose file was modified within the last `days`."""
+def list_recent(
+    days: int = 7,
+    min_user_turns: int = 0,
+    project_filter: str | None = None,
+) -> list[SessionInfo]:
+    """List Claude Code sessions whose file was modified within the last `days`.
+
+    `min_user_turns`: skip sessions with fewer human-typed turns than this.
+    `project_filter`: case-insensitive substring match against the cwd.
+    """
     now = datetime.now(timezone.utc).timestamp()
     cutoff = now - days * 86400
+    pf = project_filter.lower() if project_filter else None
     results: list[SessionInfo] = []
 
     for path in _iter_session_files():
@@ -157,6 +166,11 @@ def list_recent(days: int = 7) -> list[SessionInfo]:
 
         if project is None:
             project = _slug_to_project(path.parent.name)
+
+        if user_turn_count < min_user_turns:
+            continue
+        if pf and pf not in project.lower():
+            continue
 
         results.append(
             SessionInfo(

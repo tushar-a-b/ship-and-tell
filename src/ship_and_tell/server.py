@@ -18,14 +18,30 @@ mcp = FastMCP("ship-and-tell")
 
 
 @mcp.tool()
-def list_recent_sessions(days: int = 7) -> list[dict[str, Any]]:
+def list_recent_sessions(
+    days: int = 7,
+    min_user_turns: int = 0,
+    project_filter: str | None = None,
+) -> list[dict[str, Any]]:
     """List Claude Code coding sessions from the last N days.
 
     Returns metadata per session: session_id, project (cwd), first user message,
     user_turn_count, model, git_branch. Use this to survey what was worked on
     and pick interesting sessions to read in full.
+
+    min_user_turns: skip sessions with fewer human-typed turns than this.
+    Useful default once the vault has many entries: 5 or 10 to skip drive-bys.
+    project_filter: case-insensitive substring match against the project path
+    (cwd). Use to focus the digest on one repo.
     """
-    return [s.to_dict() for s in claude_code.list_recent(days=days)]
+    return [
+        s.to_dict()
+        for s in claude_code.list_recent(
+            days=days,
+            min_user_turns=min_user_turns,
+            project_filter=project_filter,
+        )
+    ]
 
 
 @mcp.tool()
@@ -87,13 +103,64 @@ def save_insight(
 
 
 @mcp.tool()
-def list_vault(limit: int = 20, since_days: int | None = None) -> list[dict[str, Any]]:
+def list_vault(
+    limit: int = 20,
+    since_days: int | None = None,
+    posted: bool | None = None,
+) -> list[dict[str, Any]]:
     """List previously saved insights from the vault, most recent first.
 
+    posted=None returns all; True returns only posted; False returns only unposted.
     Use this to build the weekly digest, find unposted tweets, or dedupe
     before saving a new insight that may already exist.
     """
-    return vault.list_vault(limit=limit, since_days=since_days)
+    return vault.list_vault(limit=limit, since_days=since_days, posted=posted)
+
+
+@mcp.tool()
+def update_insight(
+    insight_id: str,
+    title: str | None = None,
+    project: str | None = None,
+    problem: str | None = None,
+    root_cause: str | None = None,
+    lesson: str | None = None,
+    tweet: str | None = None,
+    thread: str | None = None,
+    article: str | None = None,
+    source_session_id: str | None = None,
+    tags: list[str] | None = None,
+    posted: bool | None = None,
+) -> dict[str, Any]:
+    """Edit an existing vault entry. Only fields you pass are updated.
+
+    Use this when the user asks to tweak a draft, fix a typo, retag, or set
+    `posted=True/False`. id and created_at are immutable.
+    """
+    fields = {
+        k: v
+        for k, v in {
+            "title": title,
+            "project": project,
+            "problem": problem,
+            "root_cause": root_cause,
+            "lesson": lesson,
+            "tweet": tweet,
+            "thread": thread,
+            "article": article,
+            "source_session_id": source_session_id,
+            "tags": tags,
+            "posted": posted,
+        }.items()
+        if v is not None
+    }
+    return vault.update_insight(insight_id, **fields)
+
+
+@mcp.tool()
+def mark_posted(insight_id: str, posted: bool = True) -> dict[str, Any]:
+    """Mark a vault entry as posted (or set posted=False to unmark)."""
+    return vault.mark_posted(insight_id, posted=posted)
 
 
 def main() -> None:
