@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from . import sources, vault
+from ship_and_tell import sources, vault
 
 st.set_page_config(page_title="Ship & Tell", page_icon="🚢", layout="wide")
 
