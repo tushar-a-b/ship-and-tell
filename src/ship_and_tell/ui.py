@@ -41,17 +41,59 @@ def _sidebar() -> dict:
 
     st.sidebar.divider()
     st.sidebar.subheader("Session filters")
-    days = st.sidebar.slider("Days back", 1, 30, 7)
+
+    DAY_PRESETS: list[tuple[str, int | None]] = [
+        ("Last 24 hours", 1),
+        ("Last 3 days", 3),
+        ("Last 7 days", 7),
+        ("Last 14 days", 14),
+        ("Last 30 days", 30),
+        ("Last 60 days", 60),
+        ("Last 90 days", 90),
+        ("Last 180 days", 180),
+        ("Last year", 365),
+        ("Last 2 years", 730),
+        ("Custom…", None),
+    ]
+    preset_labels = [p[0] for p in DAY_PRESETS]
+    preset_idx = st.sidebar.selectbox(
+        "Time range",
+        list(range(len(DAY_PRESETS))),
+        index=2,
+        format_func=lambda i: preset_labels[i],
+    )
+    selected_days = DAY_PRESETS[preset_idx][1]
+    if selected_days is None:
+        selected_days = st.sidebar.number_input(
+            "Custom days back",
+            min_value=1,
+            max_value=3650,
+            value=14,
+            step=1,
+        )
+
     project_filter = st.sidebar.text_input(
         "Project contains", "", help="Case-insensitive substring of the cwd"
     )
     min_turns = st.sidebar.number_input("Min user turns", min_value=0, value=0, step=1)
 
+    st.sidebar.divider()
+    st.sidebar.subheader("Summary view")
+    st.sidebar.caption(
+        "When you click *Show summary* on a session, this is how many user+assistant "
+        "turns to load. Tool calls, tool results, thinking blocks, and system meta are "
+        "always stripped. Longer sessions keep the head + tail and elide the middle."
+    )
+    max_turns = st.sidebar.number_input(
+        "Max turns shown", min_value=20, max_value=2000, value=60, step=20
+    )
+
     return {
         "agent_key": agent_key,
-        "days": days,
+        "days": int(selected_days),
         "project_filter": project_filter or None,
         "min_turns": int(min_turns),
+        "max_turns": int(max_turns),
     }
 
 
@@ -72,8 +114,21 @@ def _sessions_tab(filters: dict) -> None:
         project_filter=filters["project_filter"],
     )
 
+    days = filters["days"]
+    if days >= 365:
+        range_label = f"{days // 365} year{'s' if days // 365 > 1 else ''}"
+        rem = days % 365
+        if rem:
+            range_label += f" {rem}d"
+    elif days >= 30:
+        range_label = f"{days // 30} month{'s' if days // 30 > 1 else ''}"
+        rem = days % 30
+        if rem:
+            range_label += f" {rem}d"
+    else:
+        range_label = f"{days}d"
     st.caption(
-        f"{len(sessions)} sessions in last {filters['days']}d"
+        f"{len(sessions)} sessions in last {range_label}"
         + (f" with ≥{filters['min_turns']} turns" if filters["min_turns"] else "")
         + (f" matching '{filters['project_filter']}'" if filters["project_filter"] else "")
     )
@@ -98,21 +153,25 @@ def _sessions_tab(filters: dict) -> None:
             if st.button("Show summary", key=f"show_{d['session_id']}"):
                 with st.spinner("Reading…"):
                     out = adapter.read_session(
-                        d["session_id"], format="summary", max_turns=60
+                        d["session_id"],
+                        format="summary",
+                        max_turns=filters["max_turns"],
                     )
                 st.caption(
-                    f"{out['returned_turn_count']} / {out['turn_count']} turns shown"
-                    + (" (truncated)" if out.get("truncated") else "")
+                    f"{out['returned_turn_count']} of {out['turn_count']} turns shown"
+                    + (" — middle elided" if out.get("truncated") else "")
+                    + " · tool calls, tool results, thinking, and meta wrappers stripped"
                 )
                 for t in out["turns"]:
                     role = t["role"]
                     text = t["text"]
                     if role == "user":
-                        st.markdown(f"**🧑 user** — {text[:1200]}")
+                        st.markdown(f"**🧑 user**\n\n{text}")
                     elif role == "assistant":
-                        st.markdown(f"**🤖 assistant** — {text[:1200]}")
+                        st.markdown(f"**🤖 assistant**\n\n{text}")
                     else:
                         st.caption(text)
+                    st.divider()
 
 
 def _vault_tab() -> None:
