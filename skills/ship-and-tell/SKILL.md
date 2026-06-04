@@ -37,8 +37,8 @@ If these tools are not available, tell the user the `ship-and-tell` MCP server i
    - `title`: 5-10 word handle.
    - `lesson`: 1-2 sentences, generalized. The reusable learning, not the narrative.
    - `problem` + `root_cause`: when the session was a debugging arc.
-   - `tweet`: a single tweet draft (<= 280 chars). **Open cold** (see "Cold reader rule" below).
-   - `thread`: bullet-form skeleton when the lesson has more depth than fits one tweet. Same cold-reader rule applies to the first bullet.
+   - `tweet`: a single-post draft. Default to fitting 280 chars (single tweet, free-tier safe). If the user has X Premium (check user memory), longer is fine when length is *earned* -- a story arc, a code block, a multi-step reveal -- not when it's padding. **Open cold** (see "Cold reader rule" below). Conciseness still wins engagement; never pad just because you can.
+   - `thread`: bullet-form skeleton when the lesson needs multiple posts or a numbered breakdown. Same cold-reader rule applies to the first bullet.
    - `article`: working title + one-paragraph outline when it warrants a blog post.
    - `source_session_id`: the session_id you read.
    - `project`: the project field from the session metadata.
