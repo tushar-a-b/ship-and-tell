@@ -18,6 +18,7 @@ Turn recent coding sessions into shareable insights. The MCP tools provide struc
 - `list_vault(limit, since_days, posted)` -- pull saved entries; pass `posted=False` for unposted.
 - `update_insight(insight_id, ...)` -- edit a draft.
 - `mark_posted(insight_id, posted)` -- flag a draft as posted/unposted.
+- `delete_insight(insight_id)` -- permanently remove a bad draft from the vault.
 
 If these tools are not available, tell the user the `ship-and-tell` MCP server is not installed and stop. Do not fall back to guessing.
 
@@ -36,11 +37,31 @@ If these tools are not available, tell the user the `ship-and-tell` MCP server i
    - `title`: 5-10 word handle.
    - `lesson`: 1-2 sentences, generalized. The reusable learning, not the narrative.
    - `problem` + `root_cause`: when the session was a debugging arc.
-   - `tweet`: a single tweet draft (<= 280 chars). Conversational, specific, no hashtag spam. A good tweet has a surprise or a concrete number.
-   - `thread`: bullet-form skeleton when the lesson has more depth than fits one tweet.
+   - `tweet`: a single tweet draft (<= 280 chars). **Open cold** (see "Cold reader rule" below).
+   - `thread`: bullet-form skeleton when the lesson has more depth than fits one tweet. Same cold-reader rule applies to the first bullet.
    - `article`: working title + one-paragraph outline when it warrants a blog post.
    - `source_session_id`: the session_id you read.
    - `project`: the project field from the session metadata.
+
+## Cold reader rule (non-negotiable for tweet/thread/article)
+
+**Every draft must open with what the user is building, then the immediate problem or attempt. The punchline comes last, not first.**
+
+Before saving any insight, read its tweet aloud as if you have never heard of the user's projects. If, after 5 seconds, a stranger cannot identify (a) what the system does and (b) what the problem was, **the tweet is broken** -- rewrite the opening before saving.
+
+✅ **Good opener patterns:**
+- "Building a {one-line system description}. {Symptom or attempted fix}."
+- "I shipped {thing}. {Unexpected outcome}."
+- "{Specific technology / tool} returned {surprising behavior} when {context}."
+
+❌ **Broken opener patterns (these all kill cold readers):**
+- Opening with an undefined domain term: "The signed_fields array...", "Dispute enters commit_phase...", "Sub-agents and parent sessions...".
+- Opening with the punchline: "State machines pin participants" -- great line, but only after the setup.
+- Assuming the reader is already in the project.
+
+**Exception:** universal, technology-only lessons (e.g., HTTP-vs-websocket error reporting, Python relative-imports semantics) can skip project context because the technology itself IS the context. Judgement call -- if the lesson would be just as true in any project, project setup is optional. If the lesson depends on the user's specific stack, project setup is mandatory.
+
+**Voice is style, not information.** "Match the user's terse voice" means short sentences and direct words. It does NOT mean drop the setup. A terse tweet still says what it is about.
 6. Output a digest to the user in this shape:
 
    ```

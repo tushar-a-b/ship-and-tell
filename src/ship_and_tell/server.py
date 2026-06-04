@@ -251,6 +251,16 @@ def mark_posted(insight_id: str, posted: bool = True) -> dict[str, Any]:
     return vault.mark_posted(insight_id, posted=posted)
 
 
+@mcp.tool()
+def delete_insight(insight_id: str) -> dict[str, Any]:
+    """Permanently remove an insight from the vault. Returns the deleted entry.
+
+    Use when a draft is genuinely bad and not worth keeping (vs. just being
+    unposted). Cannot be undone.
+    """
+    return vault.delete_insight(insight_id)
+
+
 def main() -> None:
     mcp.run()
 

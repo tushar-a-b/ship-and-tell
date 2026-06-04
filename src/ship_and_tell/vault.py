@@ -164,3 +164,19 @@ def update_insight(insight_id: str, **fields: Any) -> dict[str, Any]:
 
 def mark_posted(insight_id: str, posted: bool = True) -> dict[str, Any]:
     return update_insight(insight_id, posted=posted)
+
+
+def delete_insight(insight_id: str) -> dict[str, Any]:
+    """Remove an entry from the vault. Returns the deleted entry."""
+    entries = _read_all()
+    target = None
+    remaining: list[dict[str, Any]] = []
+    for entry in entries:
+        if target is None and entry.get("id") == insight_id:
+            target = entry
+            continue
+        remaining.append(entry)
+    if target is None:
+        raise KeyError(f"Insight not found: {insight_id}")
+    _write_all(remaining)
+    return target
