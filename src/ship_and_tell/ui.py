@@ -297,6 +297,29 @@ def _vault_tab() -> None:
             if e.get("root_cause"):
                 st.markdown(f"**Root cause**  \n{e['root_cause']}")
 
+            links = e.get("links") or []
+            if links:
+                badges = []
+                for ln in links:
+                    if not isinstance(ln, dict):
+                        continue
+                    ltype = (ln.get("type") or "link").lower()
+                    url = ln.get("url") or ""
+                    label = ln.get("label") or url
+                    icon = {
+                        "pr": "🔀",
+                        "commit": "🧱",
+                        "release": "🚀",
+                        "issue": "🐛",
+                        "session": "💬",
+                    }.get(ltype, "🔗")
+                    if url.startswith(("http://", "https://")):
+                        badges.append(f"{icon} [{label}]({url})")
+                    else:
+                        badges.append(f"{icon} {label}")
+                if badges:
+                    st.markdown("**Links**  \n" + "  \n".join(badges))
+
             content_tabs = st.tabs(["Tweet", "Thread", "Article", "JSON"])
             with content_tabs[0]:
                 if e.get("tweet"):

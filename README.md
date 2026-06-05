@@ -102,11 +102,15 @@ Opens at `http://localhost:8501`. Pick an agent (Claude Code today; Codex / Open
 | `read_session(session_id, format="summary", max_turns=200, include_subagents="none", max_subagent_turns=40)` | Read one session. `include_subagents="summary"` appends each subagent's transcript in its own section and drops the parent's redundant tool_result, so each piece of investigative content appears exactly once. |
 | `list_subagents(parent_session_id)` | Cheap index of subagents spawned from a session: agent_type, description, message_count. |
 | `read_subagent(parent_session_id, agent_id, format="summary", max_turns=100)` | Read one subagent's transcript. First turn is `role="agent_task"` (the parent's brief), not `user`. |
-| `read_git_activity(repo_path, since_days=7, since, until, max_commits=50, author)` | Commits + shortstat + top-touched files for a repo over a window. |
-| `save_insight(title, lesson, tweet, thread, article, ...)` | Append one insight to the vault. |
+| `list_my_pull_requests(usernames=None, since_days=14, state="merged")` | GitHub PRs authored by the user(s) via `gh search prs`. Title + body is the strongest tweet-anchor signal. |
+| `list_my_commits(usernames=None, repos=None, since_days=7)` | GitHub commits by author across the active gh account's visible repos. Per-repo `/commits?author=...` query. |
+| `list_my_releases(repos=None, since_days=60)` | GitHub releases per repo; release-notes body is curated launch copy. |
+| `read_git_activity(repo_path, since_days=7, since, until, max_commits=50, author)` | Local-repo commits + shortstat + top-touched files. Use when the repo isn't visible to the active gh account. |
+| `save_insight(title, lesson, tweet, thread, article, ..., links=None)` | Append one insight to the vault. `links` is `[{"type": "pr"\|"commit"\|"release"\|"issue"\|"session", "url": "...", "label": "..."}]`. |
 | `list_vault(limit=20, since_days=None, posted=None)` | Read the vault back. `posted=False` returns unposted only; `True` returns posted only. |
-| `update_insight(insight_id, ...)` | Edit any mutable field on an existing entry. |
+| `update_insight(insight_id, ..., links=None)` | Edit any mutable field on an existing entry, including attaching links. |
 | `mark_posted(insight_id, posted=True)` | Toggle the posted flag. |
+| `delete_insight(insight_id)` | Permanently remove a bad draft from the vault. |
 
 ## Use it from other agents
 

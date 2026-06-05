@@ -1,6 +1,6 @@
 ---
 name: ship-and-tell
-description: Mine the user's recent Claude Code sessions, subagent transcripts, and git activity for shareable insights -- tweet drafts, thread skeletons, article ideas -- and produce a weekly digest. Use when the user asks for "tweet ideas", "weekly digest", "what did I learn this week", "ship and tell", "/weekly", "/ship-it", or similar. Requires the `ship-and-tell` MCP server (tools: list_recent_sessions, read_session, list_subagents, read_subagent, read_git_activity, save_insight, list_vault, update_insight, mark_posted).
+description: Mine the user's recent Claude Code sessions, subagent transcripts, git activity, and GitHub PRs/commits/releases for shareable insights -- tweet drafts written in plain English with a pro voice, anchored to actual shipped artifacts. Use when the user asks for "tweet ideas", "weekly digest", "what did I learn this week", "ship and tell", "/weekly", "/ship-it", or similar. Requires the `ship-and-tell` MCP server (tools: list_recent_sessions, read_session, list_subagents, read_subagent, list_my_pull_requests, list_my_commits, list_my_releases, read_git_activity, save_insight, list_vault, update_insight, mark_posted, delete_insight).
 ---
 
 # Ship & Tell
@@ -13,12 +13,17 @@ Turn recent coding sessions into shareable insights. The MCP tools provide struc
 - `read_session(session_id, format, max_turns, include_subagents, max_subagent_turns)` -- read one session. Default reads parent only. Pass `include_subagents="summary"` for sessions with many subagents: this strips the parent's redundant tool_result for each Agent call and appends each subagent's transcript in its own section, so investigative content appears EXACTLY ONCE.
 - `list_subagents(parent_session_id)` -- cheap index of subagents for a session (agent_type, description, message_count). Useful when you only want titles, not transcripts.
 - `read_subagent(parent_session_id, agent_id, format, max_turns)` -- read one subagent's transcript. The first turn has role="agent_task" (auto-generated task brief from the parent), not role="user".
-- `read_git_activity(repo_path, since_days)` -- list commits + shortstat for a repo. Pair with read_session to separate "discussed" from "shipped".
+- `read_git_activity(repo_path, since_days)` -- list commits + shortstat for a local repo. Pair with read_session to separate "discussed" from "shipped" when the repo is on disk.
+- `list_my_pull_requests(usernames, since_days, state)` -- GitHub PRs authored by the user(s), via the `gh` CLI. PR title + body is usually the single strongest tweet-anchor signal. Returns `url` for each PR.
+- `list_my_commits(usernames, repos, since_days)` -- GitHub commits by author across repos the active gh account can see.
+- `list_my_releases(repos, since_days)` -- GitHub releases (often the best source for launch posts; release-notes body is curated copy).
 - `save_insight(...)` -- persist a draft to the vault.
 - `list_vault(limit, since_days, posted)` -- pull saved entries; pass `posted=False` for unposted.
 - `update_insight(insight_id, ...)` -- edit a draft.
 - `mark_posted(insight_id, posted)` -- flag a draft as posted/unposted.
 - `delete_insight(insight_id)` -- permanently remove a bad draft from the vault.
+
+Each `save_insight` and `update_insight` accepts a `links` list of dicts like `[{"type": "pr", "url": "...", "label": "PR #72: ..."}]`. Always attach at least one link when there's a real shipped artifact (PR > release > commit > local-commit > issue > session). For pure design/ops insights with no shipped artifact, link the session id as `type: "session"`.
 
 If these tools are not available, tell the user the `ship-and-tell` MCP server is not installed and stop. Do not fall back to guessing.
 
@@ -62,6 +67,26 @@ Before saving any insight, read its tweet aloud as if you have never heard of th
 **Exception:** universal, technology-only lessons (e.g., HTTP-vs-websocket error reporting, Python relative-imports semantics) can skip project context because the technology itself IS the context. Judgement call -- if the lesson would be just as true in any project, project setup is optional. If the lesson depends on the user's specific stack, project setup is mandatory.
 
 **Voice is style, not information.** "Match the user's terse voice" means short sentences and direct words. It does NOT mean drop the setup. A terse tweet still says what it is about.
+
+## Plain-English rule (paired with cold reader)
+
+After the cold-reader check, run a second gut-check: **would a non-engineer friend understand what's happening in sentence 1?** If you used a term that's only meaningful to someone deep in the stack ("subagent-aware summaries", "tool_result block", "canonical bytes", "MV3 service worker") in the opener, rewrite it. Move precise terms later in the draft once context is established, or swap them for plain analogues ("a helper agent", "the field stored when the tool replied", "the bytes the signature actually covers", "the background script that lives across browser pages").
+
+The user has explicitly asked for "the same level of explanation" as the [ship-and-tell ca24007](https://github.com/tushar-a-b/ship-and-tell/commit/ca24007) tweet rewrite: ordinary words in the first paragraph, precise vocabulary later, end with a transferable principle.
+
+## Pro voice / recruiter-signal rule
+
+Tweets should make the author's handle look like a senior engineer's: calm, anchored to real shipped work, judgment visible. Concrete checklist before saving any tweet:
+
+1. **Anchored to shipped artifact.** Attach a PR / commit / release URL via the `links` field whenever one exists. If the lesson was a runtime/ops discovery with no code change, link the source session id with `type: "session"`. Insights with no anchor at all should be the exception, not the rule.
+2. **Names the tradeoff.** "I picked X over Y because Z" reads as judgment. "I learned about X" reads as a student.
+3. **Specific numbers and proper nouns.** "21 jsonls → 125 transcripts" > "a lot more than expected". "ML-DSA-65 signature" > "crypto signature". Specificity signals depth, but introduce precise nouns AFTER plain-English setup.
+4. **Calm declarative voice.** "Here's what happened. Here's why." Not "OMG", not "🤯", not "you won't believe".
+5. **Investigation visible.** Show the steps of the trace, not just the conclusion. "Then I traced through verification" > "Then I realized".
+6. **Failure-accepting.** "Was about to add Y. Was wrong" is a stronger pro signal than silence about the wrong direction.
+7. **Transferable principle at the end.** A single quotable line at the end that another engineer can apply elsewhere ("Dedupe with code, not prompts" / "Seed before you file") makes the post quotable beyond your project.
+
+**Never use Co-Authored-By Claude, "Generated with Claude Code", or any AI-attribution trailer in commit messages, PR bodies, gh comments, or release notes when committing on this user's behalf.** This is a permanent user preference -- see the user memory entry.
 6. Output a digest to the user in this shape:
 
    ```

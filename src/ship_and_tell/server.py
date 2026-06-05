@@ -12,7 +12,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from . import claude_code, git_activity, vault
+from . import claude_code, git_activity, github_activity, vault
 
 mcp = FastMCP("ship-and-tell")
 
@@ -127,6 +127,69 @@ def read_subagent(
 
 
 @mcp.tool()
+def list_my_pull_requests(
+    usernames: list[str] | None = None,
+    since_days: int = 14,
+    state: str = "merged",
+    limit: int = 50,
+) -> dict[str, Any]:
+    """List GitHub pull requests authored by the user(s) in a time window.
+
+    Uses the `gh` CLI -- runs on the user's existing GitHub auth. If
+    `usernames` is None, queries all currently-authed gh accounts.
+    state: "merged" (default) | "open" | "closed" | "all".
+
+    PR titles + bodies are the strongest tweet-anchor signal: they're
+    already curated "what shipped" copy. Each result has a `url` ready to
+    drop into an insight's `links` field as type="pr".
+    """
+    return github_activity.list_pull_requests(
+        usernames=usernames, since_days=since_days, state=state, limit=limit
+    )
+
+
+@mcp.tool()
+def list_my_commits(
+    usernames: list[str] | None = None,
+    repos: list[str] | None = None,
+    since_days: int = 7,
+    limit_per_repo: int = 30,
+) -> dict[str, Any]:
+    """List GitHub commits authored by the user(s) in a time window.
+
+    Queries each (user, repo) pair via /repos/{repo}/commits?author=... .
+    If `repos` is None, auto-discovers from /user/repos (active gh account).
+    If `usernames` is None, defaults to currently-authed gh accounts.
+
+    Use to anchor insights to specific shas via the `url` field. For repos
+    the active gh account cannot see, fall back to the local `read_git_activity` tool.
+    """
+    return github_activity.list_commits(
+        usernames=usernames,
+        repos=repos,
+        since_days=since_days,
+        limit_per_repo=limit_per_repo,
+    )
+
+
+@mcp.tool()
+def list_my_releases(
+    repos: list[str] | None = None,
+    since_days: int = 60,
+    limit_per_repo: int = 5,
+) -> dict[str, Any]:
+    """List GitHub releases per repo in a time window.
+
+    If `repos` is None, auto-discovers from /user/repos. Each release
+    carries a tag, name, url, and body_preview (release notes) -- the
+    release body is often the cleanest tweet source for a launch post.
+    """
+    return github_activity.list_releases(
+        repos=repos, since_days=since_days, limit_per_repo=limit_per_repo
+    )
+
+
+@mcp.tool()
 def read_git_activity(
     repo_path: str,
     since_days: int | None = 7,
@@ -168,12 +231,13 @@ def save_insight(
     article: str = "",
     source_session_id: str = "",
     tags: list[str] | None = None,
+    links: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Save one learning from a coding session to the vault (~/.ship-and-tell/vault.jsonl).
+    """Save one learning from a coding session to the vault.
 
     Required: title (5-10 words), lesson (1-2 sentences, generalized).
-    Optional drafts: tweet (<=280 chars), thread, article. Provide whichever
-    fit the insight -- not every lesson needs all three.
+    Optional drafts: tweet, thread, article. Provide whichever fit.
+    `links` is a list of dicts like {"type": "pr"|"commit"|"release"|"issue"|"session", "url": "...", "label": "..."} -- attach at least one shipped-artifact URL when possible. PRs and commits are the strongest anchor for recruiter-signal posts.
     Returns the saved entry including its generated id.
     """
     return vault.save_insight(
@@ -187,6 +251,7 @@ def save_insight(
         article=article,
         source_session_id=source_session_id,
         tags=tags,
+        links=links,
     )
 
 
@@ -219,11 +284,13 @@ def update_insight(
     source_session_id: str | None = None,
     tags: list[str] | None = None,
     posted: bool | None = None,
+    links: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Edit an existing vault entry. Only fields you pass are updated.
 
-    Use this when the user asks to tweak a draft, fix a typo, retag, or set
-    `posted=True/False`. id and created_at are immutable.
+    Use this when the user asks to tweak a draft, fix a typo, retag, set
+    posted, or attach a freshly-discovered PR/commit URL via `links`.
+    id and created_at are immutable.
     """
     fields = {
         k: v
@@ -239,6 +306,7 @@ def update_insight(
             "source_session_id": source_session_id,
             "tags": tags,
             "posted": posted,
+            "links": links,
         }.items()
         if v is not None
     }

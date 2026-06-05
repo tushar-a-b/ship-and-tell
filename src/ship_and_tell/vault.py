@@ -30,6 +30,7 @@ _MUTABLE_FIELDS = {
     "source_session_id",
     "tags",
     "posted",
+    "links",
 }
 
 
@@ -83,6 +84,7 @@ def save_insight(
     article: str = "",
     source_session_id: str = "",
     tags: list[str] | None = None,
+    links: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     _ensure_vault()
     entry = {
@@ -98,6 +100,7 @@ def save_insight(
         "article": article,
         "source_session_id": source_session_id,
         "tags": tags or [],
+        "links": links or [],
         "posted": False,
     }
     with VAULT_PATH.open("a", encoding="utf-8") as fh:
