@@ -34,6 +34,30 @@ def _is_git_repo(repo: Path) -> bool:
     return result.returncode == 0 and result.stdout.strip() == "true"
 
 
+_REMOTE_URL = re.compile(r"^(?:ssh://)?(?:git@|https://)([^:/]+)[:/](.+?)(?:\.git)?/?$")
+
+
+def _web_base_url(repo: Path) -> str | None:
+    """Derive the web URL of the repo from its origin remote.
+
+    Works for both SSH and HTTPS remotes, and for any host (github.com,
+    gitlab, etc.). Visibility doesn't matter: the URL is constructed from
+    the remote string, so private repos get commit URLs too (they resolve
+    for anyone with access).
+    """
+    try:
+        result = _run_git(["remote", "get-url", "origin"], repo, timeout=5)
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+    if result.returncode != 0:
+        return None
+    m = _REMOTE_URL.match(result.stdout.strip())
+    if not m:
+        return None
+    host, path = m.group(1), m.group(2)
+    return f"https://{host}/{path}"
+
+
 def _current_branch(repo: Path) -> str | None:
     try:
         result = _run_git(["rev-parse", "--abbrev-ref", "HEAD"], repo, timeout=5)
@@ -97,6 +121,8 @@ def read_activity(
         out["error"] = result.stderr.strip() or "git log failed"
         return out
 
+    web_base = _web_base_url(repo)
+
     commits: list[dict[str, Any]] = []
     pending: dict[str, Any] | None = None
     for raw in result.stdout.splitlines():
@@ -112,6 +138,7 @@ def read_activity(
                 "author": author_name,
                 "date": date,
                 "subject": subject,
+                "url": f"{web_base}/commit/{sha}" if web_base else None,
                 "files_changed": 0,
                 "insertions": 0,
                 "deletions": 0,
@@ -158,6 +185,7 @@ def read_activity(
     out.update(
         {
             "branch": _current_branch(repo),
+            "web_base": web_base,
             "since": effective_since,
             "until": until,
             "commit_count": len(commits),

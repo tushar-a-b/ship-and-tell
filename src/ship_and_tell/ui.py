@@ -323,36 +323,24 @@ def _vault_tab() -> None:
             content_tabs = st.tabs(["Tweet", "Thread", "Article", "JSON"])
             with content_tabs[0]:
                 if e.get("tweet"):
-                    st.text_area(
-                        "tweet",
-                        value=e["tweet"],
-                        height=120,
-                        key=f"tw_{e['id']}",
-                        label_visibility="collapsed",
-                    )
-                    st.caption(f"{len(e['tweet'])} chars")
+                    tweet = e["tweet"]
+                    hook = tweet.split("\n\n", 1)[0]
+                    st.caption("Feed preview (what shows before 'Show more'):")
+                    st.info(hook)
+                    # st.code ships a copy button in the top-right corner.
+                    st.code(tweet, language=None, wrap_lines=True)
+                    words = len(tweet.split())
+                    st.caption(f"{len(tweet)} chars · {words} words")
                 else:
                     st.caption("No tweet draft.")
             with content_tabs[1]:
                 if e.get("thread"):
-                    st.text_area(
-                        "thread",
-                        value=e["thread"],
-                        height=240,
-                        key=f"th_{e['id']}",
-                        label_visibility="collapsed",
-                    )
+                    st.code(e["thread"], language=None, wrap_lines=True)
                 else:
                     st.caption("No thread draft.")
             with content_tabs[2]:
                 if e.get("article"):
-                    st.text_area(
-                        "article",
-                        value=e["article"],
-                        height=240,
-                        key=f"ar_{e['id']}",
-                        label_visibility="collapsed",
-                    )
+                    st.code(e["article"], language=None, wrap_lines=True)
                 else:
                     st.caption("No article draft.")
             with content_tabs[3]:
