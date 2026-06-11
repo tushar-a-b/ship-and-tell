@@ -30,7 +30,7 @@ The MCP server provides structured access to past sessions and a vault for saved
 
 ## Install
 
-Requires Python 3.10+ and a working `claude` CLI.
+Requires Python 3.10+ and a working `claude` CLI. The GitHub tools (`list_my_pull_requests`, `list_my_commits`, `list_my_releases`) additionally need the [`gh` CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) — everything else works without it.
 
 ```bash
 git clone <this repo> ship-and-tell
@@ -40,8 +40,8 @@ cd ship-and-tell
 python3 -m venv .venv
 .venv/bin/pip install -e '.[ui]'
 
-# 2. Register the MCP server with Claude Code
-claude mcp add ship-and-tell -- "$PWD/.venv/bin/ship-and-tell-mcp"
+# 2. Register the MCP server with Claude Code (-s user makes it available in every project)
+claude mcp add -s user ship-and-tell -- "$PWD/.venv/bin/ship-and-tell-mcp"
 
 # 3. Install the skill (symlink so edits hot-reload)
 mkdir -p ~/.claude/skills
