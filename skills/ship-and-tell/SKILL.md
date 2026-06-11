@@ -74,6 +74,17 @@ After the cold-reader check, run a second gut-check: **would a non-engineer frie
 
 The user has explicitly asked for "the same level of explanation" as the [ship-and-tell ca24007](https://github.com/tushar-a-b/ship-and-tell/commit/ca24007) tweet rewrite: ordinary words in the first paragraph, precise vocabulary later, end with a transferable principle.
 
+## Feed hook rule (the first two lines ARE the tweet)
+
+X collapses long posts behind "Show more" after roughly two lines. Only the opener renders in the feed, so the first 1-2 sentences must carry the tension or the payoff -- not just the setup.
+
+- **Front-load the surprise.** State the broken outcome, the contradiction, or the win in sentence 1. The project setup moves to sentences 2-3, where it still must appear (cold-reader rule is unchanged).
+- ✅ "My API was slow because a classifier ran inside every request. The fix took an afternoon and should've been the design from day one."
+- ❌ "I had a content-registration API that was slow." -- true, plain, and a paragraph start, not a hook. Nobody expands it.
+- Tension-first does NOT mean context-free clickbait. The hook must still be understandable to a stranger in ordinary words, and sentences 2-3 must immediately deliver the setup the cold-reader rule demands.
+
+Order of operations for every tweet: **hook (what broke / what surprised) → setup (what the system is) → the arc → the transferable principle.**
+
 ## Pro voice / recruiter-signal rule
 
 Tweets should make the author's handle look like a senior engineer's: calm, anchored to real shipped work, judgment visible. Concrete checklist before saving any tweet:
