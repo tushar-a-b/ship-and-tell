@@ -118,6 +118,7 @@ Tweets should make the author's handle look like a senior engineer's: calm, anch
 
 ## Quality bar
 
+- **No long dashes.** Never use the long em dash (—) or long en dash (–) in any draft (tweet, thread, article, title, lesson). Rewrite with a comma, period, colon, or parentheses. The normal short hyphen (-) is fine. This is a permanent user preference; see also the global rule in ~/.claude/CLAUDE.md.
 - **Don't fabricate.** If the transcript doesn't reveal the root cause, leave `root_cause` empty. Don't invent narrative.
 - **Dedupe.** Skip lessons already in the vault (check the `list_vault` output from step 1).
 - **Don't double-count subagents.** When `include_subagents="summary"` is on, the data layer drops the parent's tool_result for each matched Agent call -- so subagent content appears once. But the parent's own assistant text often *restates* a subagent's conclusion: count that as one insight, not two.
